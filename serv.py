@@ -1,31 +1,47 @@
-import json
 import socket
+import json
+import argparse
 
-sock_serv = socket.socket()
-
-sock_serv.bind(('', 7777))
-
-sock_serv.listen(1)
-
-data = {
-    "msg": "Hello, my name is Roman",
-    "action": "probe"
+OK = {
+    "response": 200
 }
 
-s_data = json.dumps(data)
+ERROR = {
+    "response": 500
+}
 
-result = ""
 
-while True:
-    client, addr = sock_serv.accept()
-    print(f"Получен запрос на соединение от {str(addr)}")
+def get_response_on_message(data):
+    if data["action"] == "presence":
+        return json.dumps(OK).encode("utf-8")
+    else:
+        return json.dumps(ERROR).encode("utf-8")
 
-    client.send(s_data.encode("utf-8"))
 
-    data = sock_serv.recv(1024)
-    if len(data) == 0:
-        break
+def mainloop(host, port):
+    with socket.socket() as sock:
+        sock.bind((host, port))
+        sock.listen(2)
 
-    result = data.decode("utf-8")
+        conn, addr = sock.accept()
+        while True:
 
-    client.close()
+            data = conn.recv(1024)
+            if not data:
+                continue
+
+            data = json.loads(data.decode("utf-8"))
+
+            print(data)
+
+            conn.send(get_response_on_message(data))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Server side app')
+    parser.add_argument("-a", help="Enter address to listen", default="")
+    parser.add_argument("-p", help="Enter port to listen", default=7777, type=int)
+
+    args = parser.parse_args()
+
+    mainloop(args.a, args.p)
